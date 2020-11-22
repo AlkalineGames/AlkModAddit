@@ -93,7 +93,8 @@ UAlkAddPersister::AlkAddPersist(
       ProjectName,
       GGameIni
     );
-    SetId = CompanyName + ':' + ProjectName;
+    SetId = CompanyName + "-" + ProjectName;
+	SetId = SetId.Replace(TEXT(" "), TEXT("_")); // convert spaces to underscores
   }
   FString PersistentId = InOutPersistentId->Value;
   PersistentId.TrimStartAndEndInline();
