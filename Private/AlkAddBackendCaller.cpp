@@ -17,7 +17,7 @@ void UAlkAddBackendCaller::ConfigureHostName(
   FString InHostName)
 {
   HostName = InHostName;
-  PersistUrl = "http://" + HostName + "/persist";
+  PersistUrl = "http://" + HostName + "/session/persist";
 }
 
 void UAlkAddBackendCaller::RequestPersist(
