@@ -24,10 +24,12 @@ public:
     const FString& ClassName,
     const TMap<FString,FString>& NamedValues,
     OnPersistedCallback&&);
+
 private:
   FString HostName;
   FString PersistUrl;
-  OnPersistedCallback OnPersisted;
+
+  TMap<FHttpRequestPtr,OnPersistedCallback> OnPersistedCallbacks;
 
   void OnResponsePersist(
     FHttpRequestPtr Request,

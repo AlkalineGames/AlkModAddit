@@ -27,7 +27,6 @@ void UAlkAddBackendCaller::RequestPersist(
   const TMap<FString,FString>& NamedValues,
   OnPersistedCallback&& InOnPersisted)
 {
-  OnPersisted = MoveTemp(InOnPersisted);
   FString Payload;
   TSharedRef<TJsonWriter<TCHAR,TCondensedJsonPrintPolicy<TCHAR>>>
     JsonWriter = TJsonWriterFactory<TCHAR,TCondensedJsonPrintPolicy<TCHAR>>::Create(&Payload);
@@ -41,6 +40,8 @@ void UAlkAddBackendCaller::RequestPersist(
   JsonWriter->Close();
 
   auto Request = FHttpModule::Get().CreateRequest();
+  OnPersistedCallbacks.Add(Request,
+    MoveTemp(InOnPersisted));
   Request->OnProcessRequestComplete().BindUObject(
     this, &UAlkAddBackendCaller::OnResponsePersist);
   Request->SetVerb(TEXT("POST"));
@@ -76,5 +77,9 @@ void UAlkAddBackendCaller::OnResponsePersist(
     if (FJsonSerializer::Deserialize(Reader, JsonObject))
       PersistentId = JsonObject->GetStringField(TEXT("persistent_id"));
   }
-  OnPersisted(PersistentId);
+  auto Callback = OnPersistedCallbacks.Find(Request);
+  if (Callback) {
+    (*Callback)(PersistentId);
+    OnPersistedCallbacks.Remove(Request);
+  }
 }
