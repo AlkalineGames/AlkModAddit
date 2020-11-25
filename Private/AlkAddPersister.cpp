@@ -100,7 +100,7 @@ UAlkAddPersister::AlkAddPersist(
   PersistentId.TrimStartAndEndInline();
   const UObject* Owner = Addit->GetOwner();
   FName ClassName = Owner ? Owner->GetClass()->GetFName() : "<null>";
-  Impl->MutateBackendCaller().RequestPersist(
+  Impl->MutateBackendCaller().RequestPersistCreate(
     SetId, PersistentId, ClassName.ToString(), NamedValues,
     [InOutPersistentId] (FString PersistentId) {
       InOutPersistentId->Value = PersistentId;

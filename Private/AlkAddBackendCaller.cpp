@@ -20,12 +20,12 @@ void UAlkAddBackendCaller::ConfigureHostName(
   PersistUrl = "http://" + HostName + "/session/persist";
 }
 
-void UAlkAddBackendCaller::RequestPersist(
+void UAlkAddBackendCaller::RequestPersistCreate(
   const FString& SetId,
   const FString& PersistentId,
   const FString& ClassName,
   const TMap<FString,FString>& NamedValues,
-  OnPersistedCallback&& InOnPersisted)
+  FOnResponsePersistCreateCallback&& InOnResponsePersisteCreateCallback)
 {
   FString Payload;
   TSharedRef<TJsonWriter<TCHAR,TCondensedJsonPrintPolicy<TCHAR>>>
@@ -40,10 +40,10 @@ void UAlkAddBackendCaller::RequestPersist(
   JsonWriter->Close();
 
   auto Request = FHttpModule::Get().CreateRequest();
-  OnPersistedCallbacks.Add(Request,
-    MoveTemp(InOnPersisted));
+  OnResponsePersistCreateCallbacks.Add(Request,
+    MoveTemp(InOnResponsePersisteCreateCallback));
   Request->OnProcessRequestComplete().BindUObject(
-    this, &UAlkAddBackendCaller::OnResponsePersist);
+    this, &UAlkAddBackendCaller::OnResponsePersistCreate);
   Request->SetVerb(TEXT("POST"));
   Request->SetURL(PersistUrl);
   Request->SetHeader(TEXT("User-Agent"), TEXT("X-UnrealEngine-Agent"));
@@ -60,7 +60,7 @@ void UAlkAddBackendCaller::RequestPersist(
 
 // private methods
 
-void UAlkAddBackendCaller::OnResponsePersist(
+void UAlkAddBackendCaller::OnResponsePersistCreate(
   FHttpRequestPtr Request,
   FHttpResponsePtr Response,
   bool bWasSuccessful
@@ -77,9 +77,9 @@ void UAlkAddBackendCaller::OnResponsePersist(
     if (FJsonSerializer::Deserialize(Reader, JsonObject))
       PersistentId = JsonObject->GetStringField(TEXT("persistent_id"));
   }
-  auto Callback = OnPersistedCallbacks.Find(Request);
+  auto Callback = OnResponsePersistCreateCallbacks.Find(Request);
   if (Callback) {
     (*Callback)(PersistentId);
-    OnPersistedCallbacks.Remove(Request);
+    OnResponsePersistCreateCallbacks.Remove(Request);
   }
 }

@@ -17,21 +17,21 @@ public:
   void ConfigureHostName(
     FString InHostName);
 
-  typedef TUniqueFunction<void(FString PersistentId)> OnPersistedCallback;
-  void RequestPersist(
+  typedef TUniqueFunction<void(FString PersistentId)> FOnResponsePersistCreateCallback;
+  void RequestPersistCreate(
     const FString& SetId,
     const FString& PersistentId,
     const FString& ClassName,
     const TMap<FString,FString>& NamedValues,
-    OnPersistedCallback&&);
+    FOnResponsePersistCreateCallback&&);
 
 private:
   FString HostName;
   FString PersistUrl;
 
-  TMap<FHttpRequestPtr,OnPersistedCallback> OnPersistedCallbacks;
+  TMap<FHttpRequestPtr,FOnResponsePersistCreateCallback> OnResponsePersistCreateCallbacks;
 
-  void OnResponsePersist(
+  void OnResponsePersistCreate(
     FHttpRequestPtr Request,
     FHttpResponsePtr Response,
     bool bWasSuccessful);
