@@ -25,13 +25,27 @@ public:
     const TMap<FString,FString>& NamedValues,
     FOnResponsePersistCreateCallback&&);
 
+  struct FPersistentObjectState {
+    FString ClassName;
+    TMap<FString,FString> NamedValues;
+  };
+  typedef TUniqueFunction<void(const TArray<FPersistentObjectState>&)> FOnResponsePersistRetrieveCallback;
+  void RequestPersistRetrieve(
+    const FString& SetId,
+    FOnResponsePersistRetrieveCallback&&);
+
 private:
   FString HostName;
   FString PersistUrl;
 
   TMap<FHttpRequestPtr,FOnResponsePersistCreateCallback> OnResponsePersistCreateCallbacks;
-
   void OnResponsePersistCreate(
+    FHttpRequestPtr Request,
+    FHttpResponsePtr Response,
+    bool bWasSuccessful);
+
+  TMap<FHttpRequestPtr,FOnResponsePersistRetrieveCallback> OnResponsePersistRetrieveCallbacks;
+  void OnResponsePersistRetrieve(
     FHttpRequestPtr Request,
     FHttpResponsePtr Response,
     bool bWasSuccessful);

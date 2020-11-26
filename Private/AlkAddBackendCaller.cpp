@@ -58,6 +58,27 @@ void UAlkAddBackendCaller::RequestPersistCreate(
   FHttpModule::Get().GetHttpManager().Flush(false);
 }
 
+void UAlkAddBackendCaller::RequestPersistRetrieve(
+  const FString& SetId,
+  FOnResponsePersistRetrieveCallback&& InOnResponsePersisteRetrieveCallback)
+{
+  auto Request = FHttpModule::Get().CreateRequest();
+  OnResponsePersistRetrieveCallbacks.Add(Request,
+    MoveTemp(InOnResponsePersisteRetrieveCallback));
+  Request->OnProcessRequestComplete().BindUObject(
+    this, &UAlkAddBackendCaller::OnResponsePersistRetrieve);
+  Request->SetVerb(TEXT("GET"));
+  Request->SetURL(PersistUrl + "/" + SetId);
+  Request->SetHeader(TEXT("User-Agent"), TEXT("X-UnrealEngine-Agent"));
+  Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+  Request->ProcessRequest();
+  UE_LOG(LogAlkAddBackendCaller, Warning,
+    TEXT("%s %s"), *(Request->GetVerb()), *PersistUrl);
+  // !!! necessary to force a response if we are being called
+  // !!! before game is running and ticks are not yet firing
+  FHttpModule::Get().GetHttpManager().Flush(false);
+}
+
 // private methods
 
 void UAlkAddBackendCaller::OnResponsePersistCreate(
@@ -81,5 +102,49 @@ void UAlkAddBackendCaller::OnResponsePersistCreate(
   if (Callback) {
     (*Callback)(PersistentId);
     OnResponsePersistCreateCallbacks.Remove(Request);
+  }
+}
+
+void UAlkAddBackendCaller::OnResponsePersistRetrieve(
+  FHttpRequestPtr Request,
+  FHttpResponsePtr Response,
+  bool bWasSuccessful
+) {
+  UE_LOG(LogAlkAddBackendCaller, Warning,
+    TEXT("%s %s: RC %i, content <%s>"),
+    *(Request->GetVerb()), *PersistUrl,
+    Response->GetResponseCode(),
+    *(Response->GetContentAsString()));
+  TArray<FPersistentObjectState> PersistentObjectStateArray;
+  if (bWasSuccessful)
+  {
+    TSharedRef<TJsonReader<>> Reader =
+      TJsonReaderFactory<>::Create(Response->GetContentAsString());
+    TArray<TSharedPtr<FJsonValue>> JsonArray;
+    if (FJsonSerializer::Deserialize(Reader, JsonArray))
+    {
+      for (auto& JsonValue : JsonArray)
+      {
+        const TSharedPtr<FJsonObject>* JsonObject = nullptr;
+        if (JsonValue->TryGetObject(JsonObject) && JsonObject)
+        {
+          auto Item = PersistentObjectStateArray.AddDefaulted_GetRef();
+          for (auto& MapEntry : (*JsonObject)->Values)
+          {
+            FString ValueString;
+            MapEntry.Value->TryGetString(ValueString);
+            if (MapEntry.Key == "class_name")
+              Item.ClassName = ValueString;
+            else
+              Item.NamedValues.Add(MapEntry.Key, ValueString);
+          }
+        }
+      }
+    }
+  }
+  auto Callback = OnResponsePersistRetrieveCallbacks.Find(Request);
+  if (Callback) {
+    (*Callback)(PersistentObjectStateArray);
+    OnResponsePersistRetrieveCallbacks.Remove(Request);
   }
 }
