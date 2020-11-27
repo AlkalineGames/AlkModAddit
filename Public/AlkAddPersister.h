@@ -20,6 +20,12 @@ public:
   static UAlkAddPersister* AlkAddCreatePersister(
     FString HostName);
 
+  UFUNCTION(BlueprintCallable, Category = "A L K A L I N E", meta = (HidePin = "WorldContextObject", DefaultToSelf = "WorldContextObject"))
+  void AlkAddLoadAll(
+    const FString& SetId, // blank uses "<company name>:<project name>"
+    const UObject* WorldContextObject
+  );
+
   UFUNCTION(BlueprintCallable, Category = "A L K A L I N E")
   void AlkAddPersist(
     const FString& SetId, // blank uses "<company name>:<project name>"

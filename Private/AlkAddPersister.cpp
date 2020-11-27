@@ -8,6 +8,33 @@
 DECLARE_LOG_CATEGORY_EXTERN(LogAlkAddPersister, Log, All);
 DEFINE_LOG_CATEGORY(LogAlkAddPersister);
 
+static FString ResolvedSetId(
+  const FString& InSetId) // blank uses "<company name>:<project name>"
+{
+  FString SetId = InSetId;
+  if (SetId.IsEmpty())
+  {
+    FString CompanyName;
+    GConfig->GetString(
+      TEXT("/Script/EngineSettings.GeneralProjectSettings"),
+      TEXT("CompanyName"),
+      CompanyName,
+      GGameIni
+    );
+    FString ProjectName;
+    GConfig->GetString(
+      TEXT("/Script/EngineSettings.GeneralProjectSettings"),
+      TEXT("ProjectName"),
+      ProjectName,
+      GGameIni
+    );
+    SetId = CompanyName + "-" + ProjectName;
+	  SetId = SetId.Replace(TEXT(" "), TEXT("_")); // convert spaces to underscores
+  }
+  SetId.TrimStartAndEndInline();
+  return SetId;
+}
+
 class UAlkAddPersister::PrivateImpl
 {
   TWeakObjectPtr<UAlkAddBackendCaller> BackendCaller;
@@ -57,6 +84,49 @@ UAlkAddPersister::AlkAddCreatePersister(
 }
 
 void
+UAlkAddPersister::AlkAddLoadAll(
+  const FString& InSetId, // blank uses "<company name>:<project name>"
+  const UObject* WorldContextObject)
+{
+  if (!WorldContextObject)
+  {
+    UE_LOG(LogAlkAddPersister, Error, TEXT("null WorldContextObject"));
+    return;
+  }
+  if (!WorldContextObject->GetWorld())
+  {
+    UE_LOG(LogAlkAddPersister, Error, TEXT("null World in WorldContextObject"));
+    return;
+  }
+  FString SetId = ResolvedSetId(InSetId);
+  Impl->MutateBackendCaller().RequestPersistRetrieve(
+    SetId, [WorldContextObject] (const TArray<UAlkAddBackendCaller::FPersistentObjectState>& PersistentObjectStateArray)
+    {
+      for (const auto& PersistentObjectState : PersistentObjectStateArray)
+      {
+        UClass* Class = FindObject<UClass>(
+          ANY_PACKAGE, *PersistentObjectState.ClassName);
+        if (Class)
+        {
+          FTransform Transform; // ### TODO: GET FROM PERSISTENT STATE
+          FActorSpawnParameters ActorSpawnParameters;
+          ActorSpawnParameters.SpawnCollisionHandlingOverride =
+            //ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+            ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+          WorldContextObject->GetWorld()->SpawnActor(
+            //Class, &Transform, ActorSpawnParameters);
+            Class, NULL, NULL, ActorSpawnParameters);
+        }
+        else
+          UE_LOG(LogAlkAddPersister, Error,
+            TEXT("did not find class name <%s>"),
+            *PersistentObjectState.ClassName);
+      }
+    }
+  );
+}
+
+void
 UAlkAddPersister::AlkAddPersist(
   const FString& InSetId, // blank uses "<company name>:<project name>"
   UAlkAddPersistentId* InOutPersistentId,
@@ -75,35 +145,16 @@ UAlkAddPersister::AlkAddPersist(
     UE_LOG(LogAlkAddPersister, Error, TEXT("nullptr passed for Addit"));
     return;
   }
-  FString SetId = InSetId;
-  SetId.TrimStartAndEndInline();
-  if (SetId.IsEmpty())
-  {
-    FString CompanyName;
-    GConfig->GetString(
-      TEXT("/Script/EngineSettings.GeneralProjectSettings"),
-      TEXT("CompanyName"),
-      CompanyName,
-      GGameIni
-    );
-    FString ProjectName;
-    GConfig->GetString(
-      TEXT("/Script/EngineSettings.GeneralProjectSettings"),
-      TEXT("ProjectName"),
-      ProjectName,
-      GGameIni
-    );
-    SetId = CompanyName + "-" + ProjectName;
-	SetId = SetId.Replace(TEXT(" "), TEXT("_")); // convert spaces to underscores
-  }
+  FString SetId = ResolvedSetId(InSetId);
   FString PersistentId = InOutPersistentId->Value;
   PersistentId.TrimStartAndEndInline();
   const UObject* Owner = Addit->GetOwner();
-  FName ClassName = Owner ? Owner->GetClass()->GetFName() : "<null>";
+  FString ClassName = Owner ? Owner->GetClass()->GetFName().ToString() : TEXT("<null>");
   Impl->MutateBackendCaller().RequestPersistCreate(
-    SetId, PersistentId, ClassName.ToString(), NamedValues,
+    {SetId, PersistentId, ClassName, NamedValues},
     [InOutPersistentId] (FString PersistentId) {
       InOutPersistentId->Value = PersistentId;
     }
   );
 }
+
