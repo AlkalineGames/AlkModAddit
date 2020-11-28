@@ -40,6 +40,7 @@ class UAlkAddPersister::PrivateImpl
   TWeakObjectPtr<UAlkAddBackendCaller> BackendCaller;
 public:
   FString HostName;
+  bool IsSpawning = false;
 
   UAlkAddBackendCaller& MutateBackendCaller()
   {
@@ -100,7 +101,7 @@ UAlkAddPersister::AlkAddLoadAll(
   }
   FString SetId = ResolvedSetId(InSetId);
   Impl->MutateBackendCaller().RequestPersistRetrieve(
-    SetId, [WorldContextObject] (const TArray<UAlkAddBackendCaller::FPersistentObjectState>& PersistentObjectStateArray)
+    SetId, [this,WorldContextObject] (const TArray<UAlkAddBackendCaller::FPersistentObjectState>& PersistentObjectStateArray)
     {
       for (const auto& PersistentObjectState : PersistentObjectStateArray)
       {
@@ -108,14 +109,16 @@ UAlkAddPersister::AlkAddLoadAll(
           ANY_PACKAGE, *PersistentObjectState.ClassName);
         if (Class)
         {
-          FTransform Transform; // ### TODO: GET FROM PERSISTENT STATE
           FActorSpawnParameters ActorSpawnParameters;
           ActorSpawnParameters.SpawnCollisionHandlingOverride =
-            //ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-            ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+            //ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+          this->Impl->IsSpawning = true; // TODO: @@@ HACKISH
           WorldContextObject->GetWorld()->SpawnActor(
-            //Class, &Transform, ActorSpawnParameters);
-            Class, NULL, NULL, ActorSpawnParameters);
+            Class, &PersistentObjectState.Transform,
+            ActorSpawnParameters);
+            // ^ will log its own errors
+          this->Impl->IsSpawning = false; // TODO: @@@ HACKISH
         }
         else
           UE_LOG(LogAlkAddPersister, Error,
@@ -135,23 +138,38 @@ UAlkAddPersister::AlkAddPersist(
   const UActorComponent* Addit,
   const TMap<FString,FString>& NamedValues)
 {
+  if (Impl->IsSpawning) { // TODO: @@@ HACKISH
+    return; // !!! prevent reflective persistence caused by spawning
+  }
   if (!InOutPersistentId)
   {
-    UE_LOG(LogAlkAddPersister, Error, TEXT("nullptr passed for PersistentId"));
+    UE_LOG(LogAlkAddPersister, Error, TEXT("null passed for PersistentId"));
     return;
   }
   if (!Addit)
   {
-    UE_LOG(LogAlkAddPersister, Error, TEXT("nullptr passed for Addit"));
+    UE_LOG(LogAlkAddPersister, Error, TEXT("null passed for Addit"));
     return;
   }
-  FString SetId = ResolvedSetId(InSetId);
-  FString PersistentId = InOutPersistentId->Value;
-  PersistentId.TrimStartAndEndInline();
-  const UObject* Owner = Addit->GetOwner();
-  FString ClassName = Owner ? Owner->GetClass()->GetFName().ToString() : TEXT("<null>");
+  if (!Addit->GetOwner())
+  {
+    UE_LOG(LogAlkAddPersister, Error, TEXT("null owner of Addit"));
+    return;
+  }
+  const AActor* Actor = Cast<AActor>(Addit->GetOwner());
+  if (!Actor)
+  {
+    UE_LOG(LogAlkAddPersister, Error, TEXT("owner is not an Actor class"));
+    return;
+  }
   Impl->MutateBackendCaller().RequestPersistCreate(
-    {SetId, PersistentId, ClassName, NamedValues},
+    {
+      ResolvedSetId(InSetId),
+      InOutPersistentId->Value.TrimStartAndEnd(),
+      Actor->GetClass()->GetFName().ToString(),
+      Actor->GetTransform(),
+      NamedValues
+    },
     [InOutPersistentId] (FString PersistentId) {
       InOutPersistentId->Value = PersistentId;
     }
