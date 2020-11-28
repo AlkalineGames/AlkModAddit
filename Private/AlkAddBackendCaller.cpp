@@ -21,20 +21,18 @@ void UAlkAddBackendCaller::ConfigureHostName(
 }
 
 void UAlkAddBackendCaller::RequestPersistCreate(
-  const FString& SetId,
-  const FString& PersistentId,
-  const FString& ClassName,
-  const TMap<FString,FString>& NamedValues,
+  const FPersistentObjectStateRefs& PersistentObjectState,
   FOnResponsePersistCreateCallback&& InOnResponsePersisteCreateCallback)
 {
   FString Payload;
   TSharedRef<TJsonWriter<TCHAR,TCondensedJsonPrintPolicy<TCHAR>>>
     JsonWriter = TJsonWriterFactory<TCHAR,TCondensedJsonPrintPolicy<TCHAR>>::Create(&Payload);
   JsonWriter->WriteObjectStart();
-  JsonWriter->WriteValue(TEXT("set_id"), SetId);
-  JsonWriter->WriteValue(TEXT("persistent_id"), PersistentId);
-  JsonWriter->WriteValue(TEXT("class_name"), ClassName);
-  for (auto& NamedValue : NamedValues)
+  JsonWriter->WriteValue(TEXT("set_id"), PersistentObjectState.SetId);
+  JsonWriter->WriteValue(TEXT("persistent_id"), PersistentObjectState.PersistentId);
+  JsonWriter->WriteValue(TEXT("class_name"), PersistentObjectState.ClassName);
+  JsonWriter->WriteValue(TEXT("transform"), PersistentObjectState.Transform.ToString());
+  for (auto& NamedValue : PersistentObjectState.NamedValues)
     JsonWriter->WriteValue(NamedValue.Key, NamedValue.Value);
   JsonWriter->WriteObjectEnd();
   JsonWriter->Close();
@@ -128,13 +126,19 @@ void UAlkAddBackendCaller::OnResponsePersistRetrieve(
         const TSharedPtr<FJsonObject>* JsonObject = nullptr;
         if (JsonValue->TryGetObject(JsonObject) && JsonObject)
         {
-          auto Item = PersistentObjectStateArray.AddDefaulted_GetRef();
+          auto& Item = PersistentObjectStateArray.AddDefaulted_GetRef();
           for (auto& MapEntry : (*JsonObject)->Values)
           {
             FString ValueString;
             MapEntry.Value->TryGetString(ValueString);
-            if (MapEntry.Key == "class_name")
+            if (MapEntry.Key == "set_id")
+              Item.SetId = ValueString;
+            else if (MapEntry.Key == "persistent_id")
+              Item.PersistentId = ValueString;
+            else if (MapEntry.Key == "class_name")
               Item.ClassName = ValueString;
+            else if (MapEntry.Key == "transform")
+              Item.Transform.InitFromString(ValueString);
             else
               Item.NamedValues.Add(MapEntry.Key, ValueString);
           }

@@ -17,16 +17,23 @@ public:
   void ConfigureHostName(
     FString InHostName);
 
+  struct FPersistentObjectStateRefs {
+    const FString& SetId;
+    const FString& PersistentId;
+    const FString& ClassName;
+    const FTransform& Transform;
+    const TMap<FString,FString>& NamedValues;
+  };
   typedef TUniqueFunction<void(FString PersistentId)> FOnResponsePersistCreateCallback;
   void RequestPersistCreate(
-    const FString& SetId,
-    const FString& PersistentId,
-    const FString& ClassName,
-    const TMap<FString,FString>& NamedValues,
+    const FPersistentObjectStateRefs& PersistentObjectStateRefs,
     FOnResponsePersistCreateCallback&&);
 
   struct FPersistentObjectState {
+    FString SetId;
+    FString PersistentId;
     FString ClassName;
+    FTransform Transform;
     TMap<FString,FString> NamedValues;
   };
   typedef TUniqueFunction<void(const TArray<FPersistentObjectState>&)> FOnResponsePersistRetrieveCallback;
