@@ -2,8 +2,8 @@
 
 #include "AlkAddPersister.h"
 
+#include "AlkAddAcoAdditBase.h"
 #include "AlkAddBackendCaller.h"
-#include "AlkAddPersistentId.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogAlkAddPersister, Log, All);
 DEFINE_LOG_CATEGORY(LogAlkAddPersister);
@@ -132,19 +132,10 @@ UAlkAddPersister::AlkAddLoadAll(
 void
 UAlkAddPersister::AlkAddPersist(
   const FString& InSetId, // blank uses "<company name>:<project name>"
-  UAlkAddPersistentId* InOutPersistentId,
-   // ^ blank generates a new ID, i.e. creation, so this reference
-   // is held until its value is assigned at asynchronous completion
-  const UActorComponent* Addit,
-  const TMap<FString,FString>& NamedValues)
+  UAlkAddAcoAdditBase* Addit) // blank PersistentId is replaced with a new value, i.e. creation
 {
   if (Impl->IsSpawning) { // TODO: @@@ HACKISH
     return; // !!! prevent reflective persistence caused by spawning
-  }
-  if (!InOutPersistentId)
-  {
-    UE_LOG(LogAlkAddPersister, Error, TEXT("null passed for PersistentId"));
-    return;
   }
   if (!Addit)
   {
@@ -162,16 +153,17 @@ UAlkAddPersister::AlkAddPersist(
     UE_LOG(LogAlkAddPersister, Error, TEXT("owner is not an Actor class"));
     return;
   }
+  Addit->WritePersistentState();
   Impl->MutateBackendCaller().RequestPersistCreate(
     {
       ResolvedSetId(InSetId),
-      InOutPersistentId->Value.TrimStartAndEnd(),
+      Addit->PersistentId.TrimStartAndEnd(),
       Actor->GetClass()->GetFName().ToString(),
       Actor->GetTransform(),
-      NamedValues
+      Addit->PersistentNamedValues
     },
-    [InOutPersistentId] (FString PersistentId) {
-      InOutPersistentId->Value = PersistentId;
+    [Addit] (FString PersistentId) {
+      Addit->PersistentId = PersistentId;
     }
   );
 }

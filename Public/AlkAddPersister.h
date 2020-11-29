@@ -4,7 +4,7 @@
 
 #include "AlkAddPersister.generated.h"
 
-class UAlkAddPersistentId;
+class UAlkAddAcoAdditBase;
 
 UCLASS(BlueprintType, Transient)
 class ALKMODADDIT_API UAlkAddPersister : public UObject
@@ -29,10 +29,6 @@ public:
   UFUNCTION(BlueprintCallable, Category = "A L K A L I N E")
   void AlkAddPersist(
     const FString& SetId, // blank uses "<company name>:<project name>"
-    UAlkAddPersistentId* PersistentId,
-     // ^ blank generates a new ID, i.e. creation, so this reference
-     // is held until its value is assigned at asynchronous completion
-    const UActorComponent* Addit,
-    const TMap<FString,FString>& NamedValues
+    UAlkAddAcoAdditBase* Addit // blank PersistentId is replaced with a new value, i.e. creation
   );
 };
