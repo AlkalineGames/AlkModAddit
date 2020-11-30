@@ -114,10 +114,25 @@ UAlkAddPersister::AlkAddLoadAll(
             ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
             //ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
           this->Impl->IsSpawning = true; // TODO: @@@ HACKISH
-          WorldContextObject->GetWorld()->SpawnActor(
+          AActor* Actor = WorldContextObject->GetWorld()->SpawnActor(
             Class, &PersistentObjectState.Transform,
             ActorSpawnParameters);
             // ^ will log its own errors
+          if (Actor)
+          {
+            UAlkAddAcoAdditBase* Addit = Cast<UAlkAddAcoAdditBase>(
+              Actor->FindComponentByClass(UAlkAddAcoAdditBase::StaticClass()));
+            if (!Addit)
+            {
+              UE_LOG(LogAlkAddPersister, Error, TEXT("missing Addit component that should be attached to Actor"));
+            }
+            else
+            {
+              Addit->PersistentId = PersistentObjectState.PersistentId;
+              Addit->PersistentNamedValues = PersistentObjectState.NamedValues;
+              Addit->ReadPersistentState();
+            }
+          }
           this->Impl->IsSpawning = false; // TODO: @@@ HACKISH
         }
         else
