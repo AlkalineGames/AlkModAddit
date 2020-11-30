@@ -20,6 +20,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void EstablishAfterActorBeginPlay();
 
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void UpdateAfterActorChanged();
+
 	UFUNCTION(BlueprintImplementableEvent)
 	void ReadPersistentState();
 
