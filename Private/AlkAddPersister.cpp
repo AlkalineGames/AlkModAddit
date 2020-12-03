@@ -86,7 +86,7 @@ UAlkAddPersister::AlkAddCreatePersister(
 
 void
 UAlkAddPersister::AlkAddLoadAll(
-  const FString& InSetId, // blank uses "<company name>:<project name>"
+  const FString& SetId, // blank uses "<company name>:<project name>"
   const UObject* WorldContextObject)
 {
   if (!WorldContextObject)
@@ -99,9 +99,8 @@ UAlkAddPersister::AlkAddLoadAll(
     UE_LOG(LogAlkAddPersister, Error, TEXT("null World in WorldContextObject"));
     return;
   }
-  FString SetId = ResolvedSetId(InSetId);
   Impl->MutateBackendCaller().RequestPersistRetrieve(
-    SetId, [this,WorldContextObject] (const TArray<UAlkAddBackendCaller::FPersistentObjectState>& PersistentObjectStateArray)
+    ResolvedSetId(SetId), [this,WorldContextObject] (const TArray<UAlkAddBackendCaller::FPersistentObjectState>& PersistentObjectStateArray)
     {
       for (const auto& PersistentObjectState : PersistentObjectStateArray)
       {
@@ -183,3 +182,16 @@ UAlkAddPersister::AlkAddPersist(
   );
 }
 
+void
+UAlkAddPersister::AlkAddUnpersist(
+  const FString& SetId, // blank uses "<company name>:<project name>"
+  const FString& PersistentId ) // blank unpersists the entire set
+{
+  Impl->MutateBackendCaller().RequestPersistDelete(
+    ResolvedSetId(SetId),
+    PersistentId.TrimStartAndEnd(),
+    [] (bool bWasSuccessful) {
+        // !!! ignoring success or failure
+    }
+  );
+}

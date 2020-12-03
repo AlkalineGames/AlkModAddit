@@ -31,4 +31,10 @@ public:
     const FString& SetId, // blank uses "<company name>:<project name>"
     UAlkAddAcoAdditBase* Addit // blank PersistentId is replaced with a new value, i.e. creation
   );
+
+  UFUNCTION(BlueprintCallable, Category = "A L K A L I N E")
+  void AlkAddUnpersist(
+    const FString& SetId, // blank uses "<company name>:<project name>"
+    const FString& PersistentId // blank unpersists the entire set
+  );
 };
