@@ -41,6 +41,12 @@ public:
     const FString& SetId,
     FOnResponsePersistRetrieveCallback&&);
 
+  typedef TUniqueFunction<void(bool bWasSuccessful)> FOnResponsePersistDeleteCallback;
+  void RequestPersistDelete(
+    const FString& SetId,
+    const FString& PersistentId,
+    FOnResponsePersistDeleteCallback&&);
+
 private:
   FString HostName;
   FString PersistUrl;
@@ -53,6 +59,12 @@ private:
 
   TMap<FHttpRequestPtr,FOnResponsePersistRetrieveCallback> OnResponsePersistRetrieveCallbacks;
   void OnResponsePersistRetrieve(
+    FHttpRequestPtr Request,
+    FHttpResponsePtr Response,
+    bool bWasSuccessful);
+
+  TMap<FHttpRequestPtr,FOnResponsePersistDeleteCallback> OnResponsePersistDeleteCallbacks;
+  void OnResponsePersistDelete(
     FHttpRequestPtr Request,
     FHttpResponsePtr Response,
     bool bWasSuccessful);

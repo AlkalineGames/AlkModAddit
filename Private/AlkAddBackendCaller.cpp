@@ -77,6 +77,29 @@ void UAlkAddBackendCaller::RequestPersistRetrieve(
   FHttpModule::Get().GetHttpManager().Flush(false);
 }
 
+void UAlkAddBackendCaller::RequestPersistDelete(
+  const FString& SetId,
+  const FString& PersistentId,
+  FOnResponsePersistDeleteCallback&& InOnResponsePersisteDeleteCallback)
+{
+  auto Request = FHttpModule::Get().CreateRequest();
+  OnResponsePersistDeleteCallbacks.Add(Request,
+    MoveTemp(InOnResponsePersisteDeleteCallback));
+  Request->OnProcessRequestComplete().BindUObject(
+    this, &UAlkAddBackendCaller::OnResponsePersistDelete);
+  Request->SetVerb(TEXT("DELETE"));
+  Request->SetURL(PersistUrl + "/" + SetId +
+    (PersistentId.IsEmpty() ? "" : "/" + PersistentId));
+  Request->SetHeader(TEXT("User-Agent"), TEXT("X-UnrealEngine-Agent"));
+  Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+  Request->ProcessRequest();
+  UE_LOG(LogAlkAddBackendCaller, Warning,
+    TEXT("%s %s"), *(Request->GetVerb()), *PersistUrl);
+  // !!! necessary to force a response if we are being called
+  // !!! before game is running and ticks are not yet firing
+  FHttpModule::Get().GetHttpManager().Flush(false);
+}
+
 // private methods
 
 void UAlkAddBackendCaller::OnResponsePersistCreate(
@@ -150,5 +173,22 @@ void UAlkAddBackendCaller::OnResponsePersistRetrieve(
   if (Callback) {
     (*Callback)(PersistentObjectStateArray);
     OnResponsePersistRetrieveCallbacks.Remove(Request);
+  }
+}
+
+void UAlkAddBackendCaller::OnResponsePersistDelete(
+  FHttpRequestPtr Request,
+  FHttpResponsePtr Response,
+  bool bWasSuccessful
+) {
+  UE_LOG(LogAlkAddBackendCaller, Warning,
+    TEXT("%s %s: RC %i, content <%s>"),
+    *(Request->GetVerb()), *PersistUrl,
+    Response->GetResponseCode(),
+    *(Response->GetContentAsString()));
+  auto Callback = OnResponsePersistDeleteCallbacks.Find(Request);
+  if (Callback) {
+    (*Callback)(bWasSuccessful);
+    OnResponsePersistDeleteCallbacks.Remove(Request);
   }
 }
