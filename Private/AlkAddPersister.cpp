@@ -77,11 +77,31 @@ void UAlkAddPersister::BeginDestroy() // override
 // static
 UAlkAddPersister*
 UAlkAddPersister::AlkAddCreatePersister(
-  FString HostName)
+  const FString& HostName)
 {
   auto Object = NewObject<UAlkAddPersister>();
   Object->Impl->HostName = HostName;
   return Object;
+}
+
+// static
+UClass*
+UAlkAddPersister::AlkFindClassByName(
+  const FString& ClassName)
+{
+  return FindObject<UClass>(ANY_PACKAGE, *ClassName);
+}
+
+// static
+UObject*
+UAlkAddPersister::AlkFindObjectByNames(
+  const FString& ClassName,
+  const FString& ObjectName)
+{
+  UClass* Class = AlkFindClassByName(ClassName);
+  if (!Class)
+    return nullptr;
+  return StaticFindObject(Class, ANY_PACKAGE, *ObjectName);
 }
 
 void
@@ -104,8 +124,7 @@ UAlkAddPersister::AlkAddLoadAll(
     {
       for (const auto& PersistentObjectState : PersistentObjectStateArray)
       {
-        UClass* Class = FindObject<UClass>(
-          ANY_PACKAGE, *PersistentObjectState.ClassName);
+        UClass* Class = AlkFindClassByName(PersistentObjectState.ClassName);
         if (Class)
         {
           FActorSpawnParameters ActorSpawnParameters;

@@ -18,7 +18,16 @@ public:
 
   UFUNCTION(BlueprintCallable, Category = "A L K A L I N E")
   static UAlkAddPersister* AlkAddCreatePersister(
-    FString HostName);
+    const FString& HostName);
+
+  UFUNCTION(BlueprintCallable, Category = "A L K A L I N E")
+  static UClass* AlkFindClassByName(
+    const FString& ClassName);
+
+  UFUNCTION(BlueprintCallable, Category = "A L K A L I N E")
+  static UObject* AlkFindObjectByNames(
+    const FString& ClassName,
+    const FString& ObjectName);
 
   UFUNCTION(BlueprintCallable, Category = "A L K A L I N E", meta = (HidePin = "WorldContextObject", DefaultToSelf = "WorldContextObject"))
   void AlkAddLoadAll(
