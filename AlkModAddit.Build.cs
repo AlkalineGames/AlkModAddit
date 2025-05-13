@@ -1,5 +1,5 @@
-// Copyright 2020 Alkaline Games, LLC. All Rights Reserved.
-
+// Copyright © 2020 - 2025 Alkaline Games, LLC. All rights reserved.
+//
 using UnrealBuildTool;
 
 public class AlkModAddit : ModuleRules
@@ -12,7 +12,7 @@ public class AlkModAddit : ModuleRules
       "Core",
       "CoreUObject",
       "Engine",
-      "Http",
+      "HTTP",
       "Json"
       // !!! not yet required:
       //"JsonUtilities"
